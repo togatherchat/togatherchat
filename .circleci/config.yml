@@ -1,0 +1,105 @@
+version: 2.1
+orbs:
+  compare-url: iynere/compare-url@1.2.0
+workflows:
+  publish-orbs:
+    jobs:
+      - compare-url/reconstruct
+      - publish:
+          requires:
+            - compare-url/reconstruct
+jobs:
+  publish:
+    docker:
+      - image: circleci/node:10.16.3
+    steps:
+      - checkout
+      - run:
+          name: update-npm
+          command: 'sudo npm install -g npm@latest'
+      - run:
+          name: yarn-install
+          command: yarn
+      - run:
+          name: Install Now CLI
+          command: yarn global add now@latest
+      - compare-url/use:
+          step-name: Publish modified orbs
+          attach-workspace: true
+          custom-logic: |
+            # 加 yarn global 的 bin
+            echo 'export PATH=$(yarn global bin):$PATH' >> $BASH_ENV
+            source $BASH_ENV
+
+            # 顯示 now version
+            now --version
+
+            # 每個資料夾查看一下
+            for ORB in */; do
+              # 拿到資料夾的名稱
+              orbname=$(basename $ORB)
+              echo "orbname ${orbname}"
+
+              # 如果在本次 commit 修改的範圍內
+              if [[ $(git diff $COMMIT_RANGE --name-status | grep "$orbname") ]]; then
+                # 顯示該資料夾已被修改
+                echo "publishing ${orbname}"
+
+                # 在資料夾裡看有沒有 now.json
+                if [ -f "$orbname/now.json" ]; then
+
+                  # 顯示找到 now.json
+                  echo "found now.json in project:" $orbname
+
+                  # 顯示將要 deploy
+                  echo "deploying ${orbname}"
+
+                  # 進入資料夾裡
+                  cd $orbname
+
+                  # 如果目前的 branch 是 master
+                  if [ "${CIRCLE_BRANCH}" == "master" ]; then
+
+                    # 看看 package.json 的 scripts 中有沒有 build:circle
+                    BUILD=$(jq -r '.scripts["build:circle"]' package.json)
+
+                    # 如果 scripts 中沒有 build:circle
+                    if [ "$BUILD" == "null" ]; then
+                      # 顯示沒找到 build:circle
+                      echo "not found script - build:circle"
+                    else
+                      # 如果找到 build:circle，顯示找到 build:circle
+                      echo "found script - build:circle"
+                      # 執行 yarn
+                      yarn
+                      # 執行 yarn run build:circle
+                      yarn run build:circle
+                    fi
+
+                    # 執行 now
+                    NOW_URL=$(now --build-env CIRCLE_BRANCH=master --build-env WITHCLOUD=1 --token $ZEIT_TOKEN --local-config now.json --prod)
+
+                    # 顯示運行完的網址
+                    echo "NOW_URL" $NOW_URL
+
+                  # 如果目前的 branch 不是 master
+                  else
+                    # 顯示不是 master branch, 不需要 deploy
+                    echo "Not master branch! cancel deploy!"
+                  fi
+
+                  # 回到上一層資料夾
+                  cd ..
+
+                # 在資料夾裡沒有 now.json
+                else
+                  # 顯示沒有找到 now.json，不需要 deploy
+                  echo "${orbname} not found now.json; no need to deploy"
+                fi
+              
+              # 如果在本次 commit 不在修改的範圍內
+              else
+                # 顯示沒有被修改，不需要 deploy
+                echo "${orbname} not modified; no need to publish"
+              fi
+            done

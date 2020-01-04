@@ -1,0 +1,25 @@
+{
+  "name": "chat",
+  "version": "1.0.0",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "lint": "standard"
+  },
+  "devDependencies": {
+    "babel-eslint": "^10.0.3",
+    "standard": "^14.3.1"
+  },
+  "standard": {
+    "parser": "babel-eslint",
+    "globals": [],
+    "plugins": [],
+    "ignore": [
+      "**/node_modules/",
+      "**/ios/",
+      "**/android/",
+      "**/dist/",
+      "**/out/"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "togatherchat",
+  "version": 2,
+  "scope": "withcloud",
+  "alias": ["togather.chat"],
+  "regions": ["hnd1"],
+  "builds": [
+    { "src": "www/package.json", "use": "@now/next" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/www/$1" }
+  ],
+  "build": {
+    "env": {
+      "ROOT_URL": "https://togather.chat"
+    }
+  },
+  "env": {
+    "ROOT_URL": "https://togather.chat"
+  }
+}
